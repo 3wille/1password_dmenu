@@ -1,16 +1,19 @@
 #!/usr/bin/env ruby
-# frozen_string_literal: true
 
-require "json"
+# require "rubygems"
+require "bundler/setup"
+require "dotenv/load"
+require "active_support/all"
+require "open3"
 require "byebug"
 require "clipboard"
-require "active_support/all"
 
 ACTIONS = ["Copy", "Open"].freeze
 
 OP_ADDRESS = ENV["OP_ADDRESS"]
 OP_EMAIL = ENV["OP_EMAIL"]
 OP_SECRET_KEY = ENV["OP_SECRET_KEY"]
+OP_SIGNIN_ALIAS = ENV["OP_SIGNIN_ALIAS"]
 
 def main
   check_login_and_authenticate
@@ -77,15 +80,22 @@ end
 
 def authenticate_1p!
   password = dmenu_password
-  if password.present?
+  output = ""
+  if password.present? &&
+      OP_ADDRESS.present? &&
+      OP_EMAIL.present? &&
+      OP_SECRET_KEY.present?
     output = `op signin #{OP_ADDRESS} #{OP_EMAIL} #{OP_SECRET_KEY} #{password}`
-    session_key = output.match(/\"(.*)\"/)&.captures&.first
-    if session_key.blank?
-      authenticate_1p!
-    end
-    ENV["OP_SESSION_my"] = session_key
+  elsif password.present? && OP_SIGNIN_ALIAS.present?
+    output = `op signin #{OP_SIGNIN_ALIAS} #{password}`
   else
     exit
+  end
+  session_key = output.match(/\"(.*)\"/)&.captures&.first
+  if session_key.blank?
+    authenticate_1p!
+  else
+    ENV["OP_SESSION_my"] = session_key
   end
 end
 
